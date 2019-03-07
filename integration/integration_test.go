@@ -56,7 +56,7 @@ func testIntegration(t *testing.T, when spec.G, it spec.S) {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(body).To(ContainSubstring("Hello, World!"))
 
-			Expect(app.Destroy()).To(Succeed())
+			//Expect(app.Destroy()).To(Succeed())
 		})
 	})
 
