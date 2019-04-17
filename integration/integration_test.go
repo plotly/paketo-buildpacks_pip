@@ -20,29 +20,28 @@ func TestIntegration(t *testing.T) {
 
 func testIntegration(t *testing.T, when spec.G, it spec.S) {
 	var (
-		uri string
-		err error
+		pythonURI string
+		pipURI    string
+		err       error
 	)
 
 	it.Before(func() {
 		RegisterTestingT(t)
-		uri, err = dagger.PackageBuildpack()
+		pipURI, err = dagger.PackageBuildpack()
+		Expect(err).ToNot(HaveOccurred())
+		pythonURI, err = dagger.GetLatestBuildpack("python-cnb")
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	it.After(func() {
-		if uri != "" {
-			Expect(os.RemoveAll(uri)).To(Succeed())
+		if pipURI != "" {
+			Expect(os.RemoveAll(pipURI)).To(Succeed())
 		}
 	})
 
 	when("building a simple app", func() {
-
 		it("runs a python app using pip", func() {
-			pythonCNBURI, err := dagger.GetLatestBuildpack("python-cnb")
-			Expect(err).ToNot(HaveOccurred())
-
-			app, err := dagger.PackBuild(filepath.Join("testdata", "simple_app"), pythonCNBURI, uri)
+			app, err := dagger.PackBuild(filepath.Join("testdata", "simple_app"), pythonURI, pipURI)
 			Expect(err).ToNot(HaveOccurred())
 
 			app.SetHealthCheck("", "3s", "1s")
@@ -69,11 +68,7 @@ func testIntegration(t *testing.T, when spec.G, it spec.S) {
 		})
 
 		it("caches reused modules for the same app, but downloads new modules ", func() {
-			pythonCNBURI, err := dagger.GetLatestBuildpack("python-cnb")
-			Expect(err).ToNot(HaveOccurred())
-
-			app, err := dagger.PackBuild(filepath.Join("testdata", "simple_app"), pythonCNBURI, uri)
-
+			app, err := dagger.PackBuild(filepath.Join("testdata", "simple_app"), pythonURI, pipURI)
 			Expect(err).ToNot(HaveOccurred())
 
 			app.SetHealthCheck("", "3s", "1s")
@@ -82,22 +77,48 @@ func testIntegration(t *testing.T, when spec.G, it spec.S) {
 			Expect(err).ToNot(HaveOccurred())
 
 			_, imgName, _, _ := app.Info()
-
-			rebuiltApp, err := dagger.PackBuildNamedImage(imgName, filepath.Join("testdata", "simple_app_more_packages"), pythonCNBURI, uri)
+			rebuiltApp, err := dagger.PackBuildNamedImage(imgName, filepath.Join("testdata", "simple_app_more_packages"), pythonURI, pipURI)
 			Expect(err).NotTo(HaveOccurred())
-
 			Expect(rebuiltApp.BuildLogs()).To(MatchRegexp("Using cached.*Flask"))
 			Expect(rebuiltApp.BuildLogs()).To(MatchRegexp("Downloading.*itsdangerous"))
+			Expect(rebuiltApp.Destroy()).To(Succeed())
+		})
+
+		it("does not reinstall python_packages and pip cache", func() {
+			pipEnvURI, err := dagger.PackageLocalBuildpack("pipenv-cnb", "/Users/pivotal/workspace/pipenv-cnb")
+			Expect(err).NotTo(HaveOccurred())
+
+			appDir := filepath.Join("testdata", "with_pipfile_lock")
+			app, err := dagger.PackBuild(appDir, pythonURI, pipEnvURI, pipURI)
+			Expect(err).ToNot(HaveOccurred())
+
+			logs := app.BuildLogs()
+			Expect(logs).To(MatchRegexp("Python Packages (\\S)+: Contributing to layer"))
+			Expect(logs).To(MatchRegexp("PIP Cache (\\S)+: Contributing to layer"))
+
+			_, imageID, _, err := app.Info()
+			Expect(err).NotTo(HaveOccurred())
+			rebuiltApp, err := dagger.PackBuildNamedImage(imageID, filepath.Join("testdata", "with_pipfile_lock"), pythonURI, pipEnvURI, pipURI)
+			Expect(err).NotTo(HaveOccurred())
+
+			logs = rebuiltApp.BuildLogs()
+			Expect(logs).To(MatchRegexp("Python Packages (\\S)+: Reusing cached layer"))
+			Expect(logs).NotTo(MatchRegexp("Python Packages (\\S)+: Contributing to layer"))
+			Expect(logs).To(MatchRegexp("PIP Cache (\\S)+: Reusing cached layer"))
+			Expect(logs).NotTo(MatchRegexp("PIP Cache (\\S)+: Contributing to layer"))
+
+			rebuiltApp.SetHealthCheck("", "3s", "1s")
+			rebuiltApp.Env["PORT"] = "8080"
+			Expect(rebuiltApp.Start()).To(Succeed())
+			_, _, err = rebuiltApp.HTTPGet("/")
+			Expect(err).NotTo(HaveOccurred())
 			Expect(rebuiltApp.Destroy()).To(Succeed())
 		})
 	})
 
 	when("building a simple app that is vendored", func() {
 		it("runs a python app using pip", func() {
-			pythonCNBURI, err := dagger.GetLatestBuildpack("python-cnb")
-			Expect(err).ToNot(HaveOccurred())
-
-			app, err := dagger.PackBuild(filepath.Join("testdata", "simple_app"), pythonCNBURI, uri)
+			app, err := dagger.PackBuild(filepath.Join("testdata", "simple_app"), pythonURI, pipURI)
 			Expect(err).ToNot(HaveOccurred())
 
 			app.SetHealthCheck("", "3s", "1s")

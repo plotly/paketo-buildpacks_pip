@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"pip-cnb/python_packages"
+
+	"github.com/cloudfoundry/pip-cnb/python_packages"
 
 	"github.com/buildpack/libbuildpack/buildplan"
 	"github.com/cloudfoundry/libcfbuildpack/detect"
 	"github.com/cloudfoundry/libcfbuildpack/helper"
-	"github.com/cloudfoundry/python-cnb/python"
 )
 
 func main() {
@@ -43,13 +43,7 @@ func runDetect(context detect.Detect) (int, error) {
 		return detect.FailStatusCode, nil
 	}
 
-	version := context.BuildPlan[python.Dependency].Version
-
 	return context.Pass(buildplan.BuildPlan{
-		python.Dependency: buildplan.Dependency{
-			Version:  version,
-			Metadata: buildplan.Metadata{"build": true, "launch": true},
-		},
 		python_packages.Dependency: buildplan.Dependency{
 			Metadata: buildplan.Metadata{"build": true, "launch": true},
 		},

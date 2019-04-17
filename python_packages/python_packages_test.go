@@ -3,8 +3,9 @@ package python_packages_test
 import (
 	"os"
 	"path/filepath"
-	"pip-cnb/python_packages"
 	"testing"
+
+	"github.com/cloudfoundry/pip-cnb/python_packages"
 
 	"github.com/buildpack/libbuildpack/buildplan"
 	"github.com/cloudfoundry/libcfbuildpack/helper"
@@ -112,7 +113,7 @@ func testPythonPackages(t *testing.T, when spec.G, it spec.S) {
 
 				Expect(contributor.Contribute()).To(Succeed())
 
-				Expect(factory.Build.Layers).To(test.HaveLaunchMetadata(layers.Metadata{Processes: []layers.Process{{"web", "gunicorn server:app"}}}))
+				Expect(factory.Build.Layers).To(test.HaveApplicationMetadata(layers.Metadata{Processes: []layers.Process{{"web", "gunicorn server:app"}}}))
 				packagesLayer := factory.Build.Layers.Layer(python_packages.Dependency)
 				Expect(packagesLayer).To(test.HaveLayerMetadata(false, true, true))
 				Expect(filepath.Join(packagesLayer.Root, "vendoredFile")).To(BeARegularFile())
@@ -164,7 +165,7 @@ func testPythonPackages(t *testing.T, when spec.G, it spec.S) {
 
 				Expect(contributor.Contribute()).To(Succeed())
 
-				Expect(factory.Build.Layers).To(test.HaveLaunchMetadata(layers.Metadata{Processes: []layers.Process{{"web", "gunicorn server:app"}}}))
+				Expect(factory.Build.Layers).To(test.HaveApplicationMetadata(layers.Metadata{Processes: []layers.Process{{"web", "gunicorn server:app"}}}))
 
 				packagesLayer := factory.Build.Layers.Layer(python_packages.Dependency)
 				cacheLayer := factory.Build.Layers.Layer(python_packages.Cache)

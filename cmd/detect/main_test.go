@@ -1,8 +1,9 @@
 package main
 
 import (
-	"pip-cnb/python_packages"
 	"testing"
+
+	"github.com/cloudfoundry/pip-cnb/python_packages"
 
 	"github.com/buildpack/libbuildpack/buildplan"
 	"github.com/cloudfoundry/python-cnb/python"
@@ -48,10 +49,6 @@ func testDetect(t *testing.T, when spec.G, it spec.S) {
 			Expect(code).To(Equal(detect.PassStatusCode))
 
 			Expect(factory.Output).To(Equal(buildplan.BuildPlan{
-				python.Dependency: buildplan.Dependency{
-					Version:  "",
-					Metadata: buildplan.Metadata{"build": true, "launch": true},
-				},
 				python_packages.Dependency: buildplan.Dependency{
 					Metadata: buildplan.Metadata{"build": true, "launch": true},
 				},
