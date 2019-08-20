@@ -3,6 +3,7 @@ package python_packages
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"path/filepath"
 	"regexp"
 
@@ -17,6 +18,7 @@ import (
 
 const (
 	Dependency       = "python_packages"
+	Requirements     = "requirements"
 	Cache            = "pip_cache"
 	RequirementsFile = "requirements.txt"
 )
@@ -49,16 +51,23 @@ type Contributor struct {
 
 func NewContributor(context build.Build, manager PackageManager) (Contributor, bool, error) {
 	plan, willContribute, err := context.Plans.GetShallowMerged(Dependency)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if err != nil || !willContribute {
 		return Contributor{}, false, err
 	}
 
-	requirementsFile := filepath.Join(context.Application.Root, RequirementsFile)
+	requirementsLayer := context.Layers.Layer(Requirements)
+	fmt.Printf("WHAT IS REQUIREMENTS LAYER??? >>>>>>>.. %+v\n\n", requirementsLayer)
+	requirementsFile := filepath.Join("/layers/org.cloudfoundry.pipenv/requirements", RequirementsFile)
 	if exists, err := helper.FileExists(requirementsFile); err != nil {
 		return Contributor{}, false, err
 	} else if !exists {
 		return Contributor{}, false, fmt.Errorf(`unable to find "requirements.txt"`)
 	}
+
+	helper.CopyFile(requirementsFile, filepath.Join(context.Application.Root, RequirementsFile))
 
 	contributor := Contributor{
 		manager:       manager,
@@ -131,6 +140,8 @@ func (c Contributor) contributeStartCommand() error {
 		return err
 	}
 
+	c.packagesLayer.Logger.Info(fmt.Sprintf("\n\nDID I FIND A PROCFILE? %v\n\n", exists))
+
 	if exists {
 		buf, err := ioutil.ReadFile(procfile)
 		if err != nil {
@@ -148,12 +159,15 @@ func (c Contributor) contributePipCache() error {
 	if cacheExists, err := helper.FileExists(c.cacheLayer.Root); err != nil {
 		return err
 	} else if cacheExists {
+		c.packagesLayer.Logger.Info(">>>>> PIP CNB cache exists")
 		c.cacheLayer.Touch()
 
 		c.cacheLayer.Logger.FirstLine("%s: %s to layer",
 			c.cacheLayer.Logger.PrettyIdentity(pipCacheID{}), color.YellowString("Contributing"))
 
 		return c.cacheLayer.WriteMetadata(nil, layers.Cache)
+	} else {
+		c.packagesLayer.Logger.Info(">>>>> PIP CNB cache does not exist")
 	}
 	return nil
 }

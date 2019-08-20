@@ -34,22 +34,29 @@ func runDetect(context detect.Detect) (int, error) {
 		return detect.FailStatusCode, err
 	}
 
-	provided := []buildplan.Provided{}
-	if exists {
-		provided = append(provided, buildplan.Provided{Name: python_packages.Dependency})
+	provided := []buildplan.Provided{
+		{Name: python_packages.Dependency},
+	}
+	requires := []buildplan.Required{
+		{
+			Name:     python.Dependency,
+			Metadata: buildplan.Metadata{"build": true, "launch": true},
+		},
+		{
+			Name:     python_packages.Dependency,
+			Metadata: buildplan.Metadata{"build": true, "launch": true},
+		},
+	}
+
+	if !exists {
+		requires = append(requires, buildplan.Required{
+			Name:     python_packages.Requirements,
+			Metadata: buildplan.Metadata{"build": true},
+		})
 	}
 
 	return context.Pass(buildplan.Plan{
 		Provides: provided,
-		Requires: []buildplan.Required{
-			{
-				Name:     python.Dependency,
-				Metadata: buildplan.Metadata{"build": true, "launch": true},
-			},
-			{
-				Name:     python_packages.Dependency,
-				Metadata: buildplan.Metadata{"launch": true},
-			},
-		},
+		Requires: requires,
 	})
 }
