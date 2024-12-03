@@ -71,9 +71,22 @@ func Build(
 		if err != nil {
 			return packit.BuildResult{}, err
 		}
-
 		dependency.Name = "Pip"
 		logger.SelectedDependency(entry, dependency, clock.Now())
+
+		dependency_uv, err_uv := dependencies.Resolve(filepath.Join(context.CNBPath, "buildpack.toml"), "uv", version, context.Stack)
+		if err_uv != nil {
+			return packit.BuildResult{}, err_uv
+		}
+		dependency.Name = "uv"
+		logger.SelectedDependency(entry, dependency_uv, clock.Now())
+
+		dependency_venv, err_venv := dependencies.Resolve(filepath.Join(context.CNBPath, "buildpack.toml"), "venv", version, context.Stack)
+		if err_venv != nil {
+			return packit.BuildResult{}, err_venv
+		}
+		dependency_venv.Name = "venv"
+		logger.SelectedDependency(entry, dependency_venv, clock.Now())
 
 		legacySBOM := dependencies.GenerateBillOfMaterials(dependency)
 		launch, build := planner.MergeLayerTypes(Pip, context.Plan.Entries)
